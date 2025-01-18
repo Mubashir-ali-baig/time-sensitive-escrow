@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.15;
 
-interface IEscrowV1 {
+interface IEscrowV2 {
     error AmountCannotBeZero();
     error RecipientCannotBeZero();
     error InvalidTxId();
