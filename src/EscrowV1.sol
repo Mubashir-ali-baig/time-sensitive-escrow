@@ -15,7 +15,6 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * @dev Implements an escrow mechanism with configurable claim and redeem intervals.
  */
 contract EscrowV1 is IEscrowV1, Initializable, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuard {
-    
     /// @notice Tracks the number of transactions.
     uint256 private txCount;
 
@@ -37,7 +36,7 @@ contract EscrowV1 is IEscrowV1, Initializable, UUPSUpgradeable, OwnableUpgradeab
      * @param _escrowInterval The interval in seconds during which claims are allowed.
      * @param _owner The owner of the contract.
      */
-    function initialize(uint256 _escrowInterval, address _owner) initializer public {
+    function initialize(uint256 _escrowInterval, address _owner) public initializer {
         __Ownable_init(_owner);
         escrowInterval = _escrowInterval;
         __UUPSUpgradeable_init();
@@ -54,8 +53,11 @@ contract EscrowV1 is IEscrowV1, Initializable, UUPSUpgradeable, OwnableUpgradeab
      * - `amount` must be greater than 0.
      * - `recipient` must not be the zero address.
      */
-    function depositERC20(address recipient, address token, uint256 amount) 
-        external override nonReentrant returns (bytes32) 
+    function depositERC20(address recipient, address token, uint256 amount)
+        external
+        override
+        nonReentrant
+        returns (bytes32)
     {
         if (amount == 0) {
             revert AmountCannotBeZero();

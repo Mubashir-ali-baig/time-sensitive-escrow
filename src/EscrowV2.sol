@@ -15,7 +15,6 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * @dev Implements escrow functionality with enhanced support for Ether deposits.
  */
 contract EscrowV2 is IEscrowV2, Initializable, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuard {
-    
     /// @notice Tracks the number of transactions.
     uint256 private txCount;
 
@@ -54,8 +53,11 @@ contract EscrowV2 is IEscrowV2, Initializable, UUPSUpgradeable, OwnableUpgradeab
      * - `amount` must be greater than 0.
      * - `recipient` must not be the zero address.
      */
-    function depositERC20(address recipient, address token, uint256 amount) 
-        external override nonReentrant returns (bytes32) 
+    function depositERC20(address recipient, address token, uint256 amount)
+        external
+        override
+        nonReentrant
+        returns (bytes32)
     {
         if (amount == 0) {
             revert AmountCannotBeZero();
