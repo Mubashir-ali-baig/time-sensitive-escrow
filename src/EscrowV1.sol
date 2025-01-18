@@ -17,11 +17,7 @@ contract EscrowV1 is IEscrowV1, Ownable {
         escrowInterval = _escrowInterval;
     }
 
-    function depositERC20(
-        address recipient,
-        address token,
-        uint256 amount
-    ) external override returns (bytes32) {
+    function depositERC20(address recipient, address token, uint256 amount) external override returns (bytes32) {
         if (amount == 0) {
             revert AmountCannotBeZero();
         }
@@ -33,9 +29,7 @@ contract EscrowV1 is IEscrowV1, Ownable {
         address payee = msg.sender;
         uint256 timestamp = block.timestamp;
 
-        bytes32 depositId = keccak256(
-            abi.encode(recipient, timestamp, txCount + 1)
-        );
+        bytes32 depositId = keccak256(abi.encode(recipient, timestamp, txCount + 1));
 
         transactions[depositId] = TransactionData({
             payee: payee,
@@ -59,8 +53,9 @@ contract EscrowV1 is IEscrowV1, Ownable {
 
         if (txData.txInitTimestamp == 0) revert InvalidTxId();
 
-        if ((block.timestamp - txData.txInitTimestamp) > escrowInterval)
+        if ((block.timestamp - txData.txInitTimestamp) > escrowInterval) {
             revert ClaimExpired();
+        }
 
         address token = txData.token;
         address recipient = txData.recipient;
@@ -76,8 +71,9 @@ contract EscrowV1 is IEscrowV1, Ownable {
     function redeemERC20(bytes32 txId) external {
         TransactionData storage txData = transactions[txId];
         if (txData.txInitTimestamp == 0) revert InvalidTxId();
-        if ((block.timestamp - txData.txInitTimestamp) <= escrowInterval)
+        if ((block.timestamp - txData.txInitTimestamp) <= escrowInterval) {
             revert ClaimNotExpired();
+        }
         address payee = txData.payee;
         uint256 amount = txData.amount;
         address token = txData.token;
@@ -85,12 +81,9 @@ contract EscrowV1 is IEscrowV1, Ownable {
         TransferHelper.safeTransfer(token, payee, amount);
     }
 
-    function updateEscrowInterval(
-        uint256 _newInterval
-    ) external override onlyOwner {
+    function updateEscrowInterval(uint256 _newInterval) external override onlyOwner {
         uint256 oldInterval = escrowInterval;
         escrowInterval = _newInterval;
         emit EscrowIntervalUpdated(oldInterval, _newInterval);
     }
-
 }

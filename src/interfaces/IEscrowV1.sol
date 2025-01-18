@@ -17,26 +17,13 @@ interface IEscrowV1 {
         uint256 txInitTimestamp;
     }
 
-    function depositERC20(
-        address recipient,
-        address token,
-        uint256 amount
-    ) external returns (bytes32);
+    function depositERC20(address recipient, address token, uint256 amount) external returns (bytes32);
 
     function updateEscrowInterval(uint256 _newInterval) external;
 
-    event TokensDeposited(
-        address indexed payee,
-        address indexed recipient,
-        uint256 indexed amount,
-        uint256 timestamp
-    );
+    event TokensDeposited(address indexed payee, address indexed recipient, uint256 indexed amount, uint256 timestamp);
 
-    event TokensClaimed(
-        address indexed recipient,
-        address indexed token,
-        uint256 indexed amount
-    );
+    event TokensClaimed(address indexed recipient, address indexed token, uint256 indexed amount);
 
     event EscrowIntervalUpdated(uint256 indexed oldInterval, uint256 indexed newInterval);
 }

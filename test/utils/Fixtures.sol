@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.15;
+
 import {ERC20Mock} from "../mocks/ERC20Mock.sol";
 import {EscrowV1} from "../../src/EscrowV1.sol";
 import {TransferHelper} from "../../src/libraries/TransferHelper.sol";
 import {DeployEscrowV1} from "../../script/DeployEscrowV1.s.sol";
 import {Test} from "forge-std/Test.sol";
 
-contract Fixtures is Test{
+contract Fixtures is Test {
     DeployEscrowV1 public escrowDeployer;
     ERC20Mock public mockToken;
     EscrowV1 public escrow;
     address public deployer;
 
-    constructor(){
+    constructor() {
         deployer = msg.sender;
     }
 
     bytes32 internal nextUser = keccak256(abi.encodePacked("user address"));
-    function deployMockToken(
-        uint256 totalSupply
-    ) public {
+
+    function deployMockToken(uint256 totalSupply) public {
         mockToken = new ERC20Mock();
         mockToken.mint(address(this), totalSupply);
     }
@@ -49,7 +49,7 @@ contract Fixtures is Test{
         return users;
     }
 
-    function transferMockTokens(address user, uint256 amount) public{
+    function transferMockTokens(address user, uint256 amount) public {
         TransferHelper.safeTransfer(address(mockToken), user, amount);
     }
 }
