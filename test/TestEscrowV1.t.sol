@@ -4,10 +4,12 @@ pragma solidity ^0.8.15;
 
 import {Test} from "forge-std/Test.sol";
 import {Fixtures} from "./utils/Fixtures.sol";
-contract TestEscrowV1 is Test, Fixtures{
+
+contract TestEscrowV1 is Test, Fixtures {
     address payable[] users;
-    function setUp() public {  
-        users=createUsers(5);
+
+    function setUp() public {
+        users = createUsers(5);
         deployFreshState(1 hours);
     }
 
@@ -21,7 +23,7 @@ contract TestEscrowV1 is Test, Fixtures{
         assertEq(mockToken.balanceOf(address(escrow)), 10e18);
     }
 
-    function testDepositShoulFailWithRecipientCannotBeZero() public{
+    function testDepositShoulFailWithRecipientCannotBeZero() public {
         transferMockTokens(users[0], 100e18);
         bytes4 selector = bytes4(keccak256("RecipientCannotBeZero()"));
         vm.startPrank(users[0]);
@@ -41,7 +43,7 @@ contract TestEscrowV1 is Test, Fixtures{
         vm.stopPrank();
     }
 
-    function testRedeemShouldFailWithClaimNotExpired()public{
+    function testRedeemShouldFailWithClaimNotExpired() public {
         bytes32 txId;
         transferMockTokens(users[0], 100e18);
         bytes4 selector = bytes4(keccak256("ClaimNotExpired()"));
@@ -53,16 +55,16 @@ contract TestEscrowV1 is Test, Fixtures{
         vm.stopPrank();
     }
 
-    function testValidClaim()public{
+    function testValidClaim() public {
         bytes32 txId;
         transferMockTokens(users[0], 100e18);
         vm.startPrank(users[0]);
         mockToken.approve(address(escrow), 10e18);
         txId = escrow.depositERC20(users[1], address(mockToken), 10e18);
         vm.stopPrank();
-        
+
         vm.warp(block.timestamp + 3400);
-        
+
         vm.startPrank(users[1]);
         escrow.claim(txId);
         vm.stopPrank();
@@ -70,7 +72,7 @@ contract TestEscrowV1 is Test, Fixtures{
         assertEq(mockToken.balanceOf(users[1]), 10e18);
     }
 
-    function testShouldFailWithClaimExpired()public{
+    function testShouldFailWithClaimExpired() public {
         bytes32 txId;
         bytes4 selector = bytes4(keccak256("ClaimExpired()"));
         transferMockTokens(users[0], 100e18);
@@ -78,16 +80,16 @@ contract TestEscrowV1 is Test, Fixtures{
         mockToken.approve(address(escrow), 10e18);
         txId = escrow.depositERC20(users[1], address(mockToken), 10e18);
         vm.stopPrank();
-        
+
         vm.warp(block.timestamp + 3700);
-        
+
         vm.startPrank(users[1]);
         vm.expectRevert(selector);
         escrow.claim(txId);
         vm.stopPrank();
     }
 
-    function testShouldFailWithInvalidTxId()public{
+    function testShouldFailWithInvalidTxId() public {
         bytes32 txId;
         bytes4 selector = bytes4(keccak256("InvalidTxId()"));
         transferMockTokens(users[0], 100e18);
@@ -95,16 +97,16 @@ contract TestEscrowV1 is Test, Fixtures{
         mockToken.approve(address(escrow), 10e18);
         txId = escrow.depositERC20(users[1], address(mockToken), 10e18);
         vm.stopPrank();
-        
+
         vm.warp(block.timestamp + 3400);
-        
+
         vm.startPrank(users[1]);
         vm.expectRevert(selector);
         escrow.claim(bytes32(keccak256("Invalid")));
         vm.stopPrank();
     }
 
-    function testValidRedeem()public{
+    function testValidRedeem() public {
         bytes32 txId;
         transferMockTokens(users[0], 100e18);
         vm.startPrank(users[0]);
@@ -112,27 +114,26 @@ contract TestEscrowV1 is Test, Fixtures{
         txId = escrow.depositERC20(users[1], address(mockToken), 10e18);
         uint256 initialBalance = mockToken.balanceOf(users[0]);
         vm.stopPrank();
-        
+
         vm.warp(block.timestamp + 3700);
-        
+
         vm.startPrank(users[0]);
         escrow.redeemERC20(txId);
         vm.stopPrank();
 
-        assertEq(mockToken.balanceOf(users[0]),(initialBalance + 10e18));
+        assertEq(mockToken.balanceOf(users[0]), (initialBalance + 10e18));
     }
 
-    function testValidUpdateInterval()public{
+    function testValidUpdateInterval() public {
         vm.startPrank(deployer);
         escrow.updateEscrowInterval(3700);
         vm.stopPrank();
         assertEq(escrow.escrowInterval(), 3700);
     }
 
-    function testShouldFailWithOnlyOwner()public{ 
+    function testShouldFailWithOnlyOwner() public {
         bytes memory encodedError = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", address(this));
         vm.expectRevert(encodedError);
         escrow.updateEscrowInterval(3700);
     }
-    
 }
