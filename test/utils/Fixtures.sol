@@ -4,15 +4,21 @@ pragma solidity ^0.8.15;
 
 import {ERC20Mock} from "../mocks/ERC20Mock.sol";
 import {EscrowV1} from "../../src/EscrowV1.sol";
+import {EscrowV2} from "../../src/EscrowV2.sol";
 import {TransferHelper} from "../../src/libraries/TransferHelper.sol";
 import {DeployEscrowV1} from "../../script/DeployEscrowV1.s.sol";
+import {UpgradeEscrowV1} from "../../script/UpgradeEscrowV1.s.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract Fixtures is Test {
     DeployEscrowV1 public escrowDeployer;
+    UpgradeEscrowV1 public escrowUpgrader;
     ERC20Mock public mockToken;
     EscrowV1 public escrow;
+    EscrowV2 public upgradedEscrow;
     address public deployer;
+    ERC1967Proxy public proxy;
 
     constructor() {
         deployer = msg.sender;
@@ -28,7 +34,13 @@ contract Fixtures is Test {
     function deployFreshState(uint256 escrowInterval) public {
         escrowDeployer = new DeployEscrowV1();
         deployMockToken(10000e18);
-        escrow = escrowDeployer.run(escrowInterval, msg.sender);
+        proxy = escrowDeployer.run(escrowInterval, msg.sender);
+        escrow = EscrowV1(address(proxy));
+    }
+
+    function deployUpgrade() public {
+        escrowUpgrader = new UpgradeEscrowV1();
+        upgradedEscrow = EscrowV2(escrowUpgrader.run(address(proxy)));
     }
 
     function getNextUserAddress() public returns (address payable) {
