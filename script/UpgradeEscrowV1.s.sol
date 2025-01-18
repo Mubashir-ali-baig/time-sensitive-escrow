@@ -18,7 +18,7 @@ contract UpgradeEscrowV1 is Script {
 
     function upgradeEscrow(address proxyAddress, address upgradedEscrow) public returns (address) {
         vm.startBroadcast();
-        EscrowV1 proxy = EscrowV1(proxyAddress);
+        EscrowV1 proxy = EscrowV1(payable(proxyAddress));
         proxy.upgradeToAndCall(upgradedEscrow, "");
         vm.stopBroadcast();
         return address(proxy);

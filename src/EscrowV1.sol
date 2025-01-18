@@ -11,6 +11,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 
 /**
  * @title EscrowV1
+ * @author Mubashir Ali Baig
  * @notice A UUPS upgradeable escrow contract for securely managing ERC20 token transactions.
  * @dev Implements an escrow mechanism with configurable claim and redeem intervals.
  */
@@ -70,7 +71,7 @@ contract EscrowV1 is IEscrowV1, Initializable, UUPSUpgradeable, OwnableUpgradeab
         address payee = msg.sender;
         uint256 timestamp = block.timestamp;
 
-        bytes32 depositId = keccak256(abi.encode(recipient, timestamp, txCount + 1));
+        bytes32 depositId = keccak256(abi.encodePacked(recipient, timestamp, txCount + 1));
 
         transactions[depositId] = TransactionData({
             payee: payee,
@@ -98,7 +99,7 @@ contract EscrowV1 is IEscrowV1, Initializable, UUPSUpgradeable, OwnableUpgradeab
      * - Claim must occur within the configured `escrowInterval`.
      */
     function claim(bytes32 txId) external override nonReentrant {
-        TransactionData storage txData = transactions[txId];
+        TransactionData memory txData = transactions[txId];
 
         if (txData.txInitTimestamp == 0) revert InvalidTxId();
 
@@ -106,15 +107,11 @@ contract EscrowV1 is IEscrowV1, Initializable, UUPSUpgradeable, OwnableUpgradeab
             revert ClaimExpired();
         }
 
-        address token = txData.token;
-        address recipient = txData.recipient;
-        uint256 amount = txData.amount;
+        TransferHelper.safeTransfer(txData.token, txData.recipient, txData.amount);
+
+        emit TokensClaimed(txData.recipient, txData.token, txData.amount);
 
         delete transactions[txId];
-
-        TransferHelper.safeTransfer(token, recipient, amount);
-
-        emit TokensClaimed(recipient, token, amount);
     }
 
     /**
@@ -126,16 +123,13 @@ contract EscrowV1 is IEscrowV1, Initializable, UUPSUpgradeable, OwnableUpgradeab
      * - Redemption must occur after the configured `escrowInterval`.
      */
     function redeem(bytes32 txId) external override nonReentrant {
-        TransactionData storage txData = transactions[txId];
+        TransactionData memory txData = transactions[txId];
         if (txData.txInitTimestamp == 0) revert InvalidTxId();
         if ((block.timestamp - txData.txInitTimestamp) <= escrowInterval) {
             revert ClaimNotExpired();
         }
-        address payee = txData.payee;
-        uint256 amount = txData.amount;
-        address token = txData.token;
+        TransferHelper.safeTransfer(txData.token, txData.payee, txData.amount);
         delete transactions[txId];
-        TransferHelper.safeTransfer(token, payee, amount);
     }
 
     /**
@@ -165,4 +159,20 @@ contract EscrowV1 is IEscrowV1, Initializable, UUPSUpgradeable, OwnableUpgradeab
      * @param newImplementation The address of the new implementation contract.
      */
     function _authorizeUpgrade(address newImplementation) internal override {}
+
+    /**
+     * @notice Fallback function to handle unexpected Ether transfers.
+     * @dev Reverts all direct Ether transfers.
+     */
+    fallback() external payable {
+        revert();
+    }
+
+    /**
+     * @notice Allows the contract to receive Ether and emit an event.
+     * @dev This is triggered when Ether is sent without data.
+     */
+    receive() external payable {
+        emit EtherReceived(msg.sender, msg.value);
+    }
 }

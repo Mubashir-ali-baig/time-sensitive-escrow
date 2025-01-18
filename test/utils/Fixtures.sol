@@ -35,12 +35,12 @@ contract Fixtures is Test {
         escrowDeployer = new DeployEscrowV1();
         deployMockToken(10000e18);
         proxy = escrowDeployer.run(escrowInterval, msg.sender);
-        escrow = EscrowV1(address(proxy));
+        escrow = EscrowV1(payable(address(proxy)));
     }
 
     function deployUpgrade() public {
         escrowUpgrader = new UpgradeEscrowV1();
-        upgradedEscrow = EscrowV2(escrowUpgrader.run(address(proxy)));
+        upgradedEscrow = EscrowV2(payable(escrowUpgrader.run(address(proxy))));
     }
 
     function getNextUserAddress() public returns (address payable) {

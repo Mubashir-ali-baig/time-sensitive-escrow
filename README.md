@@ -1,66 +1,84 @@
-## Foundry
+# Time Sensitive Upgradeable Escrow
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This project implements an upgradeable escrow system using Solidity. The escrow contract allows users to deposit, claim, and redeem ERC20 tokens or Ether under time-based constraints. The system is designed with gas efficiency, security, and flexibility in mind, leveraging UUPS upgradeability for seamless contract upgrades. It showcases
+the upgradeability through the addition of Ether deposit support in the EscrowV2 and how the ERC1967Proxy is used with UUPS to upgrade from v1 to v2. 
 
-Foundry consists of:
+## Features
+- **ERC20 and Ether Support**: Users can deposit and manage both ERC20 tokens and Ether.
+- **Upgradeable**: Utilizes UUPS (Universal Upgradeable Proxy Standard) for seamless upgrades.
+- **Security**: Implements non-reentrancy and proper storage layout for safety.
+- **Time-Based Claims**: Funds can only be claimed or redeemed within specific intervals.
+- **Fail-Safe Design**: Handles edge cases like invalid IDs, expired claims, and zero-amount transactions.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## Prerequisites
+Before starting, ensure you have the following installed:
+- [Node.js](https://nodejs.org/) (v14 or later)
+- [Foundry](https://book.getfoundry.sh/) (Rust-based Ethereum development toolkit)
+- [Git](https://git-scm.com/)
+- [Solc](https://soliditylang.org/) (Solidity compiler, compatible with version ^0.8.15)
 
-## Documentation
+## Installation Steps
 
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+### 1. Clone the Repository
+```bash
+git clone https://github.com/Mubashir-ali-baig/time-sensitive-escrow.git
+cd escrow-contracts
 ```
 
-### Test
-
-```shell
-$ forge test
+### 2. Install Dependencies
+Ensure you have [Foundry](https://book.getfoundry.sh/getting-started/installation) installed. Then, run the following command to install dependencies:
+```bash
+forge install
 ```
 
-### Format
-
-```shell
-$ forge fmt
+### 3. Compile the Contracts
+Compile the Solidity contracts to ensure everything is set up correctly:
+```bash
+forge build
 ```
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
+### 4. Run Tests
+Execute the test suite to verify the contracts:
+```bash
+forge test
 ```
 
-### Anvil
+## Project Structure
+- **`contracts/`**: Contains the main contract files.
+  - `EscrowV1.sol`: First version of the escrow contract.
+  - `EscrowV2.sol`: Upgraded version with additional functionality.
+- **`libraries/`**: Utility libraries like `TransferHelper`.
+- **`interfaces/`**: Contract interfaces like `IEscrowV1` and `IEscrowV2`.
+- **`test/`**: Test files for contracts.
+- **`script/`**: Deployment and upgrade scripts.
+- **`foundry.toml`**: Foundry configuration file.
 
-```shell
-$ anvil
+## Key Commands
+
+### Compile Contracts
+```bash
+forge build
 ```
 
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+### Run Tests
+```bash
+forge test
 ```
 
-### Cast
+### Deploy the Contract
+Customize the `script/DeployEscrowV1.s.sol` or `script/UpgradeEscrowV1.s.sol` script, and then deploy:
+```bash
+forge script script/DeployEscrowV1.s.sol --broadcast --rpc-url <RPC_URL>
+```
+Replace `<RPC_URL>` with your Ethereum network endpoint (e.g., Alchemy, Infura).
 
-```shell
-$ cast <subcommand>
+### Run a Script
+```bash
+forge script <SCRIPT_PATH> --broadcast --rpc-url <RPC_URL>
 ```
 
-### Help
+## Contribution
+Feel free to contribute to this project by opening issues or submitting pull requests. Please ensure all tests pass before submitting any changes.
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+## License
+This project is licensed under the MIT License.

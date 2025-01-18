@@ -11,8 +11,9 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 
 /**
  * @title EscrowV2
- * @notice A UUPS upgradeable escrow contract supporting ERC20 tokens and Ether deposits.
- * @dev Implements escrow functionality with enhanced support for Ether deposits.
+ * @author Mubashir Ali Baig
+ * @notice A UUPS upgradeable escrow contract supporting both ERC20 tokens and Ether deposits.
+ * @dev Provides functionality for deposits, claims, and redemptions with time-based constraints.
  */
 contract EscrowV2 is IEscrowV2, Initializable, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuard {
     /// @notice Tracks the number of transactions.
@@ -25,7 +26,7 @@ contract EscrowV2 is IEscrowV2, Initializable, UUPSUpgradeable, OwnableUpgradeab
     mapping(bytes32 => TransactionData) transactions;
 
     /**
-     * @notice Disables initializers to prevent direct contract deployment.
+     * @notice Disables initializers to prevent direct deployment without initialization.
      */
     constructor() {
         _disableInitializers();
@@ -34,7 +35,7 @@ contract EscrowV2 is IEscrowV2, Initializable, UUPSUpgradeable, OwnableUpgradeab
     /**
      * @notice Initializes the escrow contract with a specific claim interval and owner.
      * @param _escrowInterval The interval in seconds during which claims are allowed.
-     * @param _owner The owner of the contract.
+     * @param _owner The address of the owner.
      */
     function initialize(uint256 _escrowInterval, address _owner) public initializer {
         __Ownable_init(_owner);
@@ -43,10 +44,9 @@ contract EscrowV2 is IEscrowV2, Initializable, UUPSUpgradeable, OwnableUpgradeab
     }
 
     /**
-     * @notice Deposits ERC20 tokens into escrow for a specific recipient.
-     * @dev Emits a `TokensDeposited` event upon successful deposit.
+     * @notice Deposits ERC20 tokens into escrow for a specified recipient.
      * @param recipient The address of the token recipient.
-     * @param token The address of the ERC20 token.
+     * @param token The address of the ERC20 token to be deposited.
      * @param amount The amount of tokens to deposit.
      * @return The unique identifier of the deposit transaction.
      * @custom:requirements
@@ -59,18 +59,13 @@ contract EscrowV2 is IEscrowV2, Initializable, UUPSUpgradeable, OwnableUpgradeab
         nonReentrant
         returns (bytes32)
     {
-        if (amount == 0) {
-            revert AmountCannotBeZero();
-        }
-
-        if (recipient == address(0)) {
-            revert RecipientCannotBeZero();
-        }
+        if (amount == 0) revert AmountCannotBeZero();
+        if (recipient == address(0)) revert RecipientCannotBeZero();
 
         address payee = msg.sender;
         uint256 timestamp = block.timestamp;
 
-        bytes32 depositId = keccak256(abi.encode(recipient, timestamp, txCount + 1));
+        bytes32 depositId = keccak256(abi.encodePacked(recipient, timestamp, txCount + 1));
 
         transactions[depositId] = TransactionData({
             payee: payee,
@@ -90,8 +85,7 @@ contract EscrowV2 is IEscrowV2, Initializable, UUPSUpgradeable, OwnableUpgradeab
     }
 
     /**
-     * @notice Deposits Ether into escrow for a specific recipient.
-     * @dev Emits a `TokensDeposited` event upon successful deposit.
+     * @notice Deposits Ether into escrow for a specified recipient.
      * @param recipient The address of the Ether recipient.
      * @return The unique identifier of the deposit transaction.
      * @custom:requirements
@@ -105,7 +99,7 @@ contract EscrowV2 is IEscrowV2, Initializable, UUPSUpgradeable, OwnableUpgradeab
         address payee = msg.sender;
         uint256 timestamp = block.timestamp;
 
-        bytes32 depositId = keccak256(abi.encode(recipient, timestamp, txCount + 1));
+        bytes32 depositId = keccak256(abi.encodePacked(recipient, timestamp, txCount + 1));
 
         transactions[depositId] = TransactionData({
             payee: payee,
@@ -124,73 +118,56 @@ contract EscrowV2 is IEscrowV2, Initializable, UUPSUpgradeable, OwnableUpgradeab
 
     /**
      * @notice Allows a recipient to claim tokens or Ether within the escrow interval.
-     * @dev Emits a `TokensClaimed` event upon successful claim.
-     * @param txId The unique identifier of the transaction.
+     * @param txId The unique identifier of the transaction to be claimed.
      * @custom:requirements
-     * - `txId` must exist in the escrow.
-     * - Claim must occur within the configured `escrowInterval`.
+     * - `txId` must exist.
+     * - The claim must occur within the escrow interval.
      */
     function claim(bytes32 txId) external override nonReentrant {
-        TransactionData storage txData = transactions[txId];
+        TransactionData memory txData = transactions[txId];
 
         if (txData.txInitTimestamp == 0) revert InvalidTxId();
+        if ((block.timestamp - txData.txInitTimestamp) > escrowInterval) revert ClaimExpired();
 
-        if ((block.timestamp - txData.txInitTimestamp) > escrowInterval) {
-            revert ClaimExpired();
-        }
-
-        address token = txData.token;
-        address recipient = txData.recipient;
-        uint256 amount = txData.amount;
-
-        delete transactions[txId];
-
-        if (token == address(0)) {
+        if (txData.token == address(0)) {
             // Ether transfer
-            (bool success,) = recipient.call{value: amount}("");
-            require(success, "Ether transfer failed");
+            (bool success,) = txData.recipient.call{value: txData.amount}("");
+            require(success);
         } else {
             // ERC20 transfer
-            TransferHelper.safeTransfer(token, recipient, amount);
+            TransferHelper.safeTransfer(txData.token, txData.recipient, txData.amount);
         }
 
-        emit TokensClaimed(recipient, token, amount);
+        emit TokensClaimed(txData.recipient, txData.token, txData.amount);
+
+        delete transactions[txId];
     }
 
     /**
      * @notice Allows the payee to redeem tokens or Ether after the escrow interval has expired.
-     * @dev Emits a `TokensClaimed` event upon successful redemption.
-     * @param txId The unique identifier of the transaction.
+     * @param txId The unique identifier of the transaction to be redeemed.
      * @custom:requirements
-     * - `txId` must exist in the escrow.
-     * - Redemption must occur after the configured `escrowInterval`.
+     * - `txId` must exist.
+     * - Redemption must occur after the escrow interval has expired.
      */
     function redeem(bytes32 txId) external override nonReentrant {
-        TransactionData storage txData = transactions[txId];
+        TransactionData memory txData = transactions[txId];
         if (txData.txInitTimestamp == 0) revert InvalidTxId();
-        if ((block.timestamp - txData.txInitTimestamp) <= escrowInterval) {
-            revert ClaimNotExpired();
-        }
+        if ((block.timestamp - txData.txInitTimestamp) <= escrowInterval) revert ClaimNotExpired();
 
-        address token = txData.token;
-        address payee = txData.payee;
-        uint256 amount = txData.amount;
-
-        delete transactions[txId];
-
-        if (token == address(0)) {
+        if (txData.token == address(0)) {
             // Ether transfer
-            (bool success,) = payee.call{value: amount}("");
-            require(success, "Ether transfer failed");
+            (bool success,) = txData.payee.call{value: txData.amount}("");
+            require(success);
         } else {
             // ERC20 transfer
-            TransferHelper.safeTransfer(token, payee, amount);
+            TransferHelper.safeTransfer(txData.token, txData.payee, txData.amount);
         }
+        delete transactions[txId];
     }
 
     /**
      * @notice Updates the escrow interval for all future transactions.
-     * @dev Emits an `EscrowIntervalUpdated` event.
      * @param _newInterval The new interval in seconds.
      * @custom:requirements
      * - Only the contract owner can call this function.
@@ -211,8 +188,25 @@ contract EscrowV2 is IEscrowV2, Initializable, UUPSUpgradeable, OwnableUpgradeab
 
     /**
      * @notice Authorizes contract upgrades.
-     * @dev Implements access control for upgrades.
      * @param newImplementation The address of the new implementation contract.
+     * @custom:requirements
+     * - Only the contract owner can upgrade the contract.
      */
     function _authorizeUpgrade(address newImplementation) internal override {}
+
+    /**
+     * @notice Fallback function to handle unexpected Ether transfers.
+     * @dev Reverts all direct Ether transfers.
+     */
+    fallback() external payable {
+        revert();
+    }
+
+    /**
+     * @notice Allows the contract to receive Ether and emit an event.
+     * @dev This is triggered when Ether is sent without data.
+     */
+    receive() external payable {
+        emit EtherReceived(msg.sender, msg.value);
+    }
 }
